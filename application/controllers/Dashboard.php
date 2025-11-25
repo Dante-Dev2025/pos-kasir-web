@@ -37,19 +37,28 @@ class Dashboard extends CI_Controller {
     // 2. HALAMAN PERHITUNGAN STOK (KHUSUS ADMIN)
     public function stok()
     {
-        // Keamanan: Hanya Admin
+        // Keamanan: Hanya Admin yang boleh akses
         if ($this->session->userdata('role') !== 'admin') {
             redirect('dashboard');
         }
 
-        // Data Dummy Stok (Nanti bisa diganti database jika sudah ada tabel stok)
-        $data['stok_barang'] = [
-            (object)['nama' => 'Daging Burger Premium', 'stok' => 150, 'satuan' => 'Pcs', 'status' => 'Aman'],
-            (object)['nama' => 'Roti Bun Wijen', 'stok' => 25, 'satuan' => 'Pack', 'status' => 'Menipis'],
-            (object)['nama' => 'Keju Cheddar Slice', 'stok' => 200, 'satuan' => 'Lembar', 'status' => 'Aman'],
-            (object)['nama' => 'Saus Tomat', 'stok' => 5, 'satuan' => 'Botol', 'status' => 'Kritis'],
-            (object)['nama' => 'Minyak Goreng', 'stok' => 40, 'satuan' => 'Liter', 'status' => 'Aman'],
-        ];
+        // Load Model Produk
+        $this->load->model('Product_model');
+
+        // Ambil semua data produk dari database 'products'
+        // Pastikan tabel 'products' sudah memiliki kolom 'stock'
+        $data['stok_barang'] = $this->Product_model->get_all_products();
+
+        // Hitung Ringkasan Stok (Summary)
+        $data['total_item'] = count($data['stok_barang']);
+        $data['stok_kritis'] = 0;
+
+        // Loop untuk menghitung berapa item yang stoknya kritis (<= 10)
+        foreach ($data['stok_barang'] as $item) {
+            if ($item->stock <= 10) {
+                $data['stok_kritis']++;
+            }
+        }
 
         $data['page_title'] = 'Perhitungan Stok';
         $data['content'] = 'stok_view'; // Memanggil view stok_view.php
