@@ -6,116 +6,108 @@ class Dashboard extends CI_Controller {
     public function __construct()
     {
         parent::__construct();
-        // Load Helper, Library, dan Model yang dibutuhkan
         $this->load->helper('url');
         $this->load->library('session');
-        $this->load->model('User_model'); // Penting: Load Model User
-
-        // Proteksi Halaman: Wajib Login
-        // Jika user belum login (tidak ada session), tendang ke halaman auth
+        
+        // Cek Login
         if (!$this->session->userdata('logged_in')) {
             redirect('auth');
         }
     }
 
-    // 1. HALAMAN UTAMA (HOME)
+    // 1. ROUTER HALAMAN UTAMA
+    // Fungsi ini mengecek role, lalu mengarahkan ke halaman "Home" masing-masing role
     public function index()
     {
-        $data['content'] = ''; 
-        $this->load->view('dashboard_view', $data);
+        $role = $this->session->userdata('role');
+
+        if ($role == 'admin') {
+            $this->stok(); // Admin home-nya adalah Stok
+        } elseif ($role == 'cashier') {
+            $this->pesanan(); // Cashier home-nya adalah Pesanan
+        } else {
+            $this->self_service(); // Guest home-nya adalah Self Service
+        }
     }
 
-    // 2. HALAMAN SELF SERVICE
-    public function self_service()
+    // 2. HALAMAN PERHITUNGAN STOK (KHUSUS ADMIN)
+    public function stok()
     {
-        $data['content'] = 'self_service_view'; 
-        
-        // Cek file view agar tidak error
-        if (!file_exists(APPPATH . 'views/self_service_view.php')) {
-            $data['content'] = ''; 
+        if ($this->session->userdata('role') !== 'admin') {
+            redirect('dashboard'); // Tendang jika bukan admin
         }
 
-        $this->load->view('dashboard_view', $data);
-    }
-
-    // 3. HALAMAN TABEL DATA (Data Dummy)
-    public function table()
-    {
-        // Data Dummy untuk demo tabel
-        $data['validasi'] = [
-            (object)['id_validasi'=>1, 'name'=>'Budi Santoso', 'email'=>'budi@example.com', 'website'=>'budisantoso.com', 'comment'=>'Clean code.', 'gender'=>'Laki-laki'],
-            (object)['id_validasi'=>2, 'name'=>'Siti Aminah', 'email'=>'siti@test.com', 'website'=>'siti-art.id', 'comment'=>'Desain bagus.', 'gender'=>'Perempuan'],
-            (object)['id_validasi'=>3, 'name'=>'Joko Anwar', 'email'=>'joko@film.com', 'website'=>'jokoanwar.com', 'comment'=>'Fitur lengkap.', 'gender'=>'Laki-laki'],
-            (object)['id_validasi'=>4, 'name'=>'Rina Nose', 'email'=>'rina@tv.com', 'website'=>'rinacomedy.com', 'comment'=>'Warna oke.', 'gender'=>'Perempuan'],
+        // Data Dummy Stok
+        $data['stok_barang'] = [
+            (object)['nama' => 'Daging Burger', 'stok' => 150, 'satuan' => 'Pcs', 'status' => 'Aman'],
+            (object)['nama' => 'Roti Bun', 'stok' => 20, 'satuan' => 'Pack', 'status' => 'Menipis'],
+            (object)['nama' => 'Keju Slice', 'stok' => 200, 'satuan' => 'Lembar', 'status' => 'Aman'],
+            (object)['nama' => 'Saus Tomat', 'stok' => 5, 'satuan' => 'Botol', 'status' => 'Kritis'],
         ];
 
-        $data['content'] = 'table_view';
+        $data['page_title'] = 'Perhitungan Stok';
+        $data['content'] = 'stok_view'; // Kita buat view ini nanti
         $this->load->view('dashboard_view', $data);
     }
 
-    // 4. HALAMAN FORM TAMBAH DATA
-    public function tambah_data()
+    // 3. HALAMAN PESANAN (ADMIN & CASHIER)
+    public function pesanan()
     {
-        $data['content'] = 'form_view';
-        $this->load->view('dashboard_view', $data);
-    }
-
-    // 5. FUNGSI EDIT & HAPUS (Placeholder)
-    public function edit($id = null)
-    {
-        $data['content'] = 'form_view';
-        $this->load->view('dashboard_view', $data);
-    }
-
-    public function hapus($id = null)
-    {
-        redirect('dashboard/table');
-    }
-
-    // =========================================================================
-    // FITUR BARU: MANAJEMEN USER (KHUSUS ADMIN)
-    // =========================================================================
-
-    // 6. Halaman List User
-    public function users()
-    {
-        // KEAMANAN: Cek apakah yang login adalah Admin?
-        // Jika bukan admin (misal cashier/guest), kembalikan ke dashboard utama
-        if ($this->session->userdata('role') !== 'admin') {
+        // Guest tidak boleh masuk sini
+        if ($this->session->userdata('role') == 'guest') {
             redirect('dashboard');
         }
 
-        // Ambil semua data user dari database menggunakan Model
+        // Data Dummy Pesanan Masuk
+        $data['pesanan'] = [
+            (object)['id' => '#ORD-001', 'meja' => 'Meja 5', 'menu' => '2x Big Mac, 1x Coke', 'status' => 'Dimasak', 'waktu' => '10:30'],
+            (object)['id' => '#ORD-002', 'meja' => 'Meja 2', 'menu' => '1x Chicken Wings', 'status' => 'Siap Saji', 'waktu' => '10:35'],
+            (object)['id' => '#ORD-003', 'meja' => 'Takeaway', 'menu' => '3x Sundae Choco', 'status' => 'Pending', 'waktu' => '10:40'],
+        ];
+
+        $data['page_title'] = 'Daftar Pesanan Masuk';
+        $data['content'] = 'pesanan_view'; // Kita buat view ini nanti
+        $this->load->view('dashboard_view', $data);
+    }
+
+    // 4. HALAMAN SELF SERVICE (ADMIN & GUEST)
+    public function self_service()
+    {
+        // Cashier tidak perlu masuk sini (karena dia fokus di dapur)
+        if ($this->session->userdata('role') == 'cashier') {
+            redirect('dashboard');
+        }
+
+        // Data Dummy Menu Makanan
+        $data['menu_makanan'] = [
+            (object)['id'=>1, 'nama'=>'Super Burger', 'harga'=>45000, 'img'=>'fa-burger'],
+            (object)['id'=>2, 'nama'=>'French Fries', 'harga'=>25000, 'img'=>'fa-utensils'],
+            (object)['id'=>3, 'nama'=>'Cola Dingin', 'harga'=>15000, 'img'=>'fa-glass-water'],
+        ];
+
+        $data['page_title'] = 'Self Service Menu';
+        $data['content'] = 'self_service_view'; // Kita buat view ini nanti
+        $this->load->view('dashboard_view', $data);
+    }
+
+    // 5. MANAJEMEN USER (ADMIN ONLY)
+    public function users()
+    {
+        if ($this->session->userdata('role') !== 'admin') {
+            redirect('dashboard');
+        }
+        $this->load->model('User_model');
         $data['all_users'] = $this->User_model->get_all_users();
-        
-        // Muat view 'users_view' di bagian konten tengah
+        $data['page_title'] = 'Kelola Pengguna';
         $data['content'] = 'users_view';
         $this->load->view('dashboard_view', $data);
     }
 
-    // 7. Proses Ganti Role (Action Form)
-    public function change_role()
-    {
-        // KEAMANAN: Cek Admin
-        if ($this->session->userdata('role') !== 'admin') {
-            redirect('dashboard');
-        }
-
-        // Ambil data dari form (users_view.php)
-        $user_id = $this->input->post('user_id');
-        $new_role = $this->input->post('role');
-
-        // VALIDASI: Admin tidak boleh mengubah role dirinya sendiri
-        // Ini untuk mencegah Admin tidak sengaja mengubah dirinya jadi Guest dan terkunci
-        if ($user_id == $this->session->userdata('user_id')) {
-            echo "<script>alert('Anda tidak bisa mengubah role akun sendiri!'); window.location.href='".site_url('dashboard/users')."';</script>";
-            return;
-        }
-
-        // Panggil Model untuk update role di database
-        $this->User_model->update_role($user_id, $new_role);
-        
-        // Redirect kembali ke halaman list user
+    // Helper untuk form update role
+    public function change_role() {
+        if ($this->session->userdata('role') !== 'admin') redirect('dashboard');
+        $this->load->model('User_model');
+        $this->User_model->update_role($this->input->post('user_id'), $this->input->post('role'));
         redirect('dashboard/users');
     }
 }
