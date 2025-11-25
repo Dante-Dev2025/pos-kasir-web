@@ -41,7 +41,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                 <div class="h-16 flex items-center px-6 border-b border-gray-100">
                     <div class="flex items-center gap-2 font-bold text-xl text-gray-800">
                         <i class="fa-solid fa-shapes text-indigo-600"></i>
-                        <span>POS</span>
+                        <span>MY APP</span>
                     </div>
                 </div>
 
@@ -49,7 +49,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                 <nav class="mt-6 px-4 space-y-2">
                     
                     <!-- 1. Home Link -->
-                    <!-- Mengarah ke Controller Dashboard, fungsi index -->
                     <a href="<?php echo site_url('dashboard'); ?>" 
                        class="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg font-medium transition-colors">
                         <i class="fa-solid fa-house w-5 text-center"></i>
@@ -57,7 +56,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     </a>
 
                     <!-- 2. Self Service Link -->
-                    <!-- PERBAIKAN DI SINI: Mengarah ke Controller Dashboard, fungsi self_service -->
                     <a href="<?php echo site_url('dashboard/self_service'); ?>" 
                        class="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg font-medium transition-colors">
                         <i class="fa-solid fa-user-gear w-5 text-center"></i>
@@ -65,12 +63,27 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     </a>
 
                     <!-- 3. Table Link -->
-                    <!-- PERBAIKAN DI SINI: Mengarah ke Controller Dashboard, fungsi table -->
                     <a href="<?php echo site_url('dashboard/table'); ?>" 
                        class="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg font-medium transition-colors">
                         <i class="fa-solid fa-table w-5 text-center"></i>
                         <span>Table</span>
                     </a>
+
+                    <!-- 4. MENU KHUSUS ADMIN (USERS) -->
+                    <!-- Hanya tampil jika role user adalah 'admin' -->
+                    <?php if($this->session->userdata('role') === 'admin'): ?>
+                        
+                        <div class="pt-4 pb-2">
+                            <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin Area</p>
+                        </div>
+
+                        <a href="<?php echo site_url('dashboard/users'); ?>" 
+                           class="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg font-medium transition-colors">
+                            <i class="fa-solid fa-users-gear w-5 text-center"></i>
+                            <span>Kelola Users</span>
+                        </a>
+
+                    <?php endif; ?>
 
                 </nav>
             </div>
@@ -99,7 +112,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                         <i class="fa-solid fa-bars text-xl"></i>
                     </button>
                     <h1 class="text-lg font-semibold text-gray-700 hidden md:block">
-                        Point Of Sales
+                        Belajar Pemrograman Web
                     </h1>
                 </div>
 
@@ -107,8 +120,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                 <div class="flex items-center gap-4">
                     <div class="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1.5 rounded-lg transition">
                         <div class="text-right hidden md:block">
-                            <p class="text-sm font-semibold text-gray-700">User System</p>
-                            <p class="text-xs text-gray-500">Online</p>
+                            <!-- Tampilkan Nama User dari Session -->
+                            <p class="text-sm font-semibold text-gray-700">
+                                <?php echo $this->session->userdata('name') ? $this->session->userdata('name') : 'User System'; ?>
+                            </p>
+                            <!-- Tampilkan Role User dari Session -->
+                            <p class="text-xs text-gray-500 uppercase">
+                                <?php echo $this->session->userdata('role') ? $this->session->userdata('role') : 'Guest'; ?>
+                            </p>
                         </div>
                         <div class="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold border border-indigo-200">
                             <i class="fa-solid fa-user"></i>
