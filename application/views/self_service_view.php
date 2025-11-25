@@ -1,7 +1,6 @@
 <!-- 1. DATA PHP KE JAVASCRIPT -->
+<!-- Kita oper data menu dari Controller ke variabel JS agar bisa diolah tanpa reload -->
 <script>
-    // Mengambil data dari Database yang dikirim Controller ke variabel JS
-    // Agar kalkulasi harga bisa berjalan realtime di browser
     const menuData = <?php echo json_encode($menu_makanan); ?>;
 </script>
 
@@ -22,7 +21,7 @@
 
         <!-- List Item (Area Scroll) -->
         <div id="cart-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50 scrollbar-thin">
-            <!-- Item akan disuntikkan di sini oleh Javascript saat tombol + ditekan -->
+            <!-- Item akan disuntikkan di sini oleh Javascript -->
             <div id="empty-cart-msg" class="h-full flex flex-col items-center justify-center text-gray-400 opacity-60 mt-10">
                 <i class="fa-solid fa-basket-shopping text-6xl mb-3"></i>
                 <p class="text-sm font-medium">Keranjang kosong</p>
@@ -73,7 +72,7 @@
 
 
     <!-- ============================================================== -->
-    <!-- BAGIAN KANAN: GRID MENU (DATA DARI DATABASE) -->
+    <!-- BAGIAN KANAN: GRID MENU (KATALOG DATABASE) -->
     <!-- ============================================================== -->
     <div class="flex-1 h-full overflow-y-auto pr-2 pb-20 scroll-smooth scrollbar-hide">
         
@@ -88,99 +87,89 @@
             <!-- KARTU MENU -->
             <div class="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-100 transition duration-300 flex flex-col h-full group relative overflow-hidden">
                 
-                <!-- Gambar Menu -->
+                <!-- Overlay Stok Habis (Tetap ditampilkan jika benar-benar habis 0) -->
+                <?php if($menu->stock <= 0): ?>
+                <div class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center text-gray-500">
+                    <i class="fa-solid fa-ban text-4xl mb-2"></i>
+                    <span class="font-bold text-lg">Habis</span>
+                </div>
+                <?php endif; ?>
+
+                <!-- Gambar dari Database -->
                 <div class="h-40 w-full rounded-xl overflow-hidden mb-3 bg-gray-100 relative">
-                    <!-- Mengambil URL Gambar dari Database -->
                     <img src="<?php echo $menu->image_url; ?>" class="w-full h-full object-cover transform group-hover:scale-105 transition duration-500" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
                     
                     <!-- Badge Harga -->
                     <div class="absolute bottom-2 left-2 bg-white/90 backdrop-blur px-3 py-1 rounded-lg text-sm font-bold text-gray-800 shadow-sm">
                         Rp <?php echo number_format($menu->price, 0, ',', '.'); ?>
                     </div>
+                    
+                    <!-- Badge Stok DIHILANGKAN (Hidden) -->
+                    <!-- <div class="absolute top-2 right-2 ...">Stok: ...</div> -->
                 </div>
 
-                <!-- Info Menu -->
                 <div class="flex-1 px-1">
                     <h3 class="font-bold text-gray-800 text-lg leading-tight mb-1"><?php echo $menu->name; ?></h3>
-                    <p class="text-gray-400 text-xs line-clamp-2">Menu lezat yang siap memanjakan lidah Anda.</p>
+                    <p class="text-gray-400 text-xs line-clamp-2">Menu lezat pilihan chef.</p>
                 </div>
 
-                <!-- Kontrol Jumlah (+ / -) -->
                 <div class="mt-4 flex items-center justify-between bg-gray-50 p-1.5 rounded-xl border border-gray-200">
-                    <!-- Tombol Kurang -->
-                    <button onclick="updateQty(<?php echo $menu->id; ?>, -1)" 
-                        class="w-9 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-red-600 hover:shadow-sm transition active:scale-90">
-                        <i class="fa-solid fa-minus text-xs"></i>
-                    </button>
-                    
-                    <!-- Display Angka Jumlah -->
+                    <button onclick="updateQty(<?php echo $menu->id; ?>, -1)" class="w-9 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-red-600 hover:shadow-sm transition"><i class="fa-solid fa-minus text-xs"></i></button>
                     <span id="qty-display-<?php echo $menu->id; ?>" class="font-bold text-gray-800 text-lg w-8 text-center">0</span>
-                    
-                    <!-- Tombol Tambah -->
-                    <button onclick="updateQty(<?php echo $menu->id; ?>, 1)" 
-                        class="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-lg shadow-md shadow-indigo-200 hover:bg-indigo-700 transition active:scale-90">
-                        <i class="fa-solid fa-plus text-xs"></i>
-                    </button>
+                    <button onclick="updateQty(<?php echo $menu->id; ?>, 1)" class="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition <?php echo $menu->stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''; ?>" <?php echo $menu->stock <= 0 ? 'disabled' : ''; ?>><i class="fa-solid fa-plus text-xs"></i></button>
                 </div>
 
             </div>
             <?php endforeach; ?>
         </div>
         
-        <!-- Spacer Mobile -->
         <div class="h-32 lg:hidden"></div>
     </div>
 
 </div>
 
-<!-- ============================================================== -->
-<!-- JAVASCRIPT LOGIC (KERANJANG BELANJA) -->
-<!-- ============================================================== -->
+<!-- LOGIKA JAVASCRIPT -->
 <script>
-    let cart = {}; // Object untuk menyimpan ID Menu -> Jumlah
+    let cart = {}; 
     let paymentMethod = 'Tunai'; // Default payment
-    
-    // Format Rupiah Indonesia
     const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
 
-    // 1. Fungsi Update Jumlah (Dipanggil saat klik + atau -)
     function updateQty(id, change) {
+        const menu = menuData.find(m => m.id == id);
+        if (!menu) return;
+
         if (!cart[id]) cart[id] = 0;
         
-        cart[id] += change;
+        // LOGIKA CEK STOK (Tetap berjalan meski tulisan stok tidak muncul)
+        if (change > 0 && cart[id] >= parseInt(menu.stock)) {
+            alert(`Maaf, stok menu ini sudah habis (Tersisa ${menu.stock}).`);
+            return; 
+        }
 
-        // Mencegah minus
+        cart[id] += change;
         if (cart[id] < 0) cart[id] = 0;
 
-        // Update tampilan angka di kartu menu kanan
         const display = document.getElementById(`qty-display-${id}`);
         if(display) display.innerText = cart[id];
-
-        // Render ulang keranjang kiri
         renderCart();
     }
 
-    // 2. Fungsi Render Keranjang Kiri
     function renderCart() {
         const container = document.getElementById('cart-container');
         const emptyMsg = document.getElementById('empty-cart-msg');
         let total = 0;
         let hasItem = false;
 
-        container.innerHTML = ''; // Reset isi container
+        container.innerHTML = ''; 
 
-        // Loop data menu dari database (variable menuData dari PHP)
         menuData.forEach(menu => {
             const qty = cart[menu.id] || 0;
-            
             if (qty > 0) {
                 hasItem = true;
-                // Mengambil harga dari database (pastikan parsing int)
                 const price = parseInt(menu.price);
                 const subtotal = qty * price;
                 total += subtotal;
 
-                // Template HTML Item Keranjang
                 const html = `
                 <div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex flex-col animate-fade-in relative group">
                     <div class="flex justify-between items-start mb-2">
@@ -190,19 +179,16 @@
                         </div>
                         <p class="font-bold text-indigo-600 text-sm">${formatter.format(subtotal)}</p>
                     </div>
-                    
                     <div class="flex items-center justify-between bg-gray-50 rounded-lg p-1">
                         <button onclick="updateQty(${menu.id}, -1)" class="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded text-gray-500 hover:text-red-500 text-xs"><i class="fa-solid fa-minus"></i></button>
                         <span class="text-xs font-bold text-gray-700">${qty}x</span>
                         <button onclick="updateQty(${menu.id}, 1)" class="w-6 h-6 flex items-center justify-center bg-indigo-100 text-indigo-600 rounded hover:bg-indigo-200 text-xs"><i class="fa-solid fa-plus"></i></button>
                     </div>
                 </div>`;
-                
                 container.innerHTML += html;
             }
         });
 
-        // Tampilkan/Sembunyikan pesan kosong
         if (hasItem) {
             emptyMsg.style.display = 'none';
         } else {
@@ -210,50 +196,83 @@
             emptyMsg.style.display = 'flex';
         }
 
-        // Update Total Harga di Bawah
         document.getElementById('total-price').innerText = formatter.format(total);
     }
 
-    // 3. UI Pilihan Pembayaran
     function selectPayment(btn, method) {
-        paymentMethod = method;
-        // Reset semua tombol style default
+        paymentMethod = method; // Simpan metode pembayaran yang dipilih
         document.querySelectorAll('.payment-btn').forEach(b => {
             b.className = 'payment-btn bg-white text-gray-600 py-2.5 rounded-lg text-xs font-bold border border-gray-200 hover:bg-gray-50 transition flex flex-col items-center gap-1';
         });
-        // Aktifkan tombol yg diklik (Style Active)
         btn.className = 'payment-btn active ring-2 ring-indigo-600 bg-indigo-50 text-indigo-700 py-2.5 rounded-lg text-xs font-bold border border-transparent transition flex flex-col items-center gap-1';
     }
 
-    // 4. Tombol Selesaikan Pesanan
+    // FUNGSI CHECKOUT KE DATABASE
     function checkout() {
         const totalStr = document.getElementById('total-price').innerText;
         const note = document.getElementById('kitchen-note').value;
 
-        if(totalStr === 'Rp 0') {
+        // 1. Validasi Keranjang Kosong
+        // Cek apakah object cart punya isi yang > 0
+        const hasItems = Object.values(cart).some(qty => qty > 0);
+
+        if (!hasItems) {
             alert('Keranjang masih kosong! Silakan pilih menu.');
             return;
         }
 
-        // Simulasi Kirim Pesanan (Nanti diganti AJAX ke Database)
-        alert(`Pesanan Berhasil!\n\nTotal: ${totalStr}\nMetode: ${paymentMethod}\nCatatan: ${note}\n\n(Pesanan diteruskan ke Kitchen Display)`);
-        
-        // Reset Cart setelah pesan (Opsional)
-        cart = {};
-        document.querySelectorAll('[id^="qty-display-"]').forEach(el => el.innerText = '0');
-        document.getElementById('kitchen-note').value = '';
-        renderCart();
+        // 2. Siapkan Data untuk Dikirim
+        let itemsToSend = [];
+        let totalPrice = 0;
+
+        menuData.forEach(menu => {
+            const qty = cart[menu.id] || 0;
+            if (qty > 0) {
+                itemsToSend.push({
+                    id: menu.id,
+                    name: menu.name,
+                    price: parseInt(menu.price),
+                    qty: qty
+                });
+                totalPrice += (qty * parseInt(menu.price));
+            }
+        });
+
+        const payload = {
+            items: itemsToSend,
+            total_price: totalPrice,
+            payment_method: paymentMethod,
+            note: note
+        };
+
+        // 3. Kirim ke Controller via Fetch API
+        fetch('<?php echo site_url("dashboard/process_checkout"); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                alert(`Pesanan Berhasil Dibuat!\nNomor Order: ${data.order_number}\nSilakan tunggu pesanan Anda.`);
+                // Reset Halaman
+                location.reload(); 
+            } else {
+                alert('Gagal membuat pesanan: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan koneksi.');
+        });
     }
 </script>
 
-<!-- Style Tambahan untuk Animasi & Scrollbar -->
 <style>
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-    
-    /* Hide Scrollbar Chrome/Safari/Webkit */
     .scrollbar-hide::-webkit-scrollbar { display: none; }
-    
-    /* Hide Scrollbar Firefox */
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 </style>

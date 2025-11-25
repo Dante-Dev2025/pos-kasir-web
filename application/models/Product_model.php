@@ -21,4 +21,11 @@ class Product_model extends CI_Model {
         $this->db->where('id', $id);
         return $this->db->update('products', $data);
     }
+
+    // 3. Fungsi Hapus Produk (BARU)
+    public function delete($id)
+    {
+        $this->db->where('id', $id);
+        return $this->db->delete('products');
+    }
 }
