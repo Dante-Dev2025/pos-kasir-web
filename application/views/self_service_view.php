@@ -185,23 +185,33 @@
         renderCart();
     }
 
-    function renderCart() {
+function renderCart() {
         const container = document.getElementById('cart-container');
-        const emptyMsg = document.getElementById('empty-cart-msg');
         let total = 0;
         let hasItem = false;
-        container.innerHTML = ''; 
+        
+        // Kita tampung HTML string-nya dulu, jangan langsung inject ke innerHTML berulang kali
+        let htmlContent = ''; 
+
+        // Loop data menu
         menuData.forEach(menu => {
             const qty = cart[menu.id] || 0;
+            
             if (qty > 0) {
                 hasItem = true;
-                const price = parseInt(menu.price);
+                // Pastikan harga jadi integer agar perhitungan benar
+                const price = parseInt(menu.price); 
                 const subtotal = qty * price;
                 total += subtotal;
-                const html = `
+
+                // Tambahkan HTML item ke variabel string
+                htmlContent += `
                 <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-3 animate-fade-in relative">
                     <div class="flex justify-between items-start mb-3">
-                        <div><h4 class="font-bold text-gray-800 text-sm leading-tight">${menu.name}</h4><p class="text-xs text-gray-400 mt-1">@ ${formatter.format(price)}</p></div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm leading-tight">${menu.name}</h4>
+                            <p class="text-xs text-gray-400 mt-1">@ ${formatter.format(price)}</p>
+                        </div>
                         <span class="font-bold text-indigo-600 text-sm">${formatter.format(subtotal)}</span>
                     </div>
                     <div class="flex items-center justify-between bg-gray-50 rounded-lg p-1.5 border border-gray-100">
@@ -210,10 +220,23 @@
                         <button onclick="updateQty(${menu.id}, 1)" class="w-7 h-7 flex items-center justify-center bg-indigo-100 border border-indigo-200 rounded-md text-indigo-600 hover:bg-indigo-200 transition shadow-sm"><i class="fa-solid fa-plus text-xs"></i></button>
                     </div>
                 </div>`;
-                container.innerHTML += html;
             }
         });
-        if (hasItem) { emptyMsg.style.display = 'none'; } else { container.appendChild(emptyMsg); emptyMsg.style.display = 'flex'; }
+
+        // LOGIKA KOSONG: Jika tidak ada item, isi htmlContent dengan tampilan kosong
+        if (!hasItem) {
+            htmlContent = `
+            <div id="empty-cart-msg" class="h-full flex flex-col items-center justify-center text-gray-400 opacity-60 mt-10">
+                <i class="fa-solid fa-basket-shopping text-6xl mb-3"></i>
+                <p class="text-sm font-medium">Keranjang kosong</p>
+                <p class="text-xs">Pilih menu di samping untuk memesan</p>
+            </div>`;
+        }
+
+        // Update Tampilan Keranjang Sekaligus
+        container.innerHTML = htmlContent;
+
+        // Update Total Harga (Penting: baris ini sekarang aman dieksekusi)
         document.getElementById('total-price').innerText = formatter.format(total);
     }
 
