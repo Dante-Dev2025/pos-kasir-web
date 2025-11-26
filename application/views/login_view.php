@@ -101,7 +101,7 @@
                         <span class="text-gray-600">Ingat saya</span>
                     </label>
                     <!-- Link lupa password dikosongkan karena tidak ada di logic sumber -->
-                    <a href="#" class="text-indigo-600 hover:text-indigo-800 font-medium">Lupa Password?</a>
+                    <a href="<?php echo site_url('auth/forgot_password'); ?>" class="text-indigo-600 font-semibold text-sm hover:underline">Lupa Password?</a>    
                 </div>
 
                 <!-- Button Login -->

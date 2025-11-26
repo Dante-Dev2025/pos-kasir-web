@@ -6,16 +6,15 @@ class Auth extends CI_Controller {
     public function __construct()
     {
         parent::__construct();
-        // Memuat Model User, Library Session, dan Helper URL
         $this->load->model('User_model');
         $this->load->library('session');
         $this->load->helper('url');
     }
 
-    // 1. Halaman Login
-    public function index()
-    {
-        // Jika user sudah login, langsung arahkan sesuai role-nya
+    // ... (Fungsi index, process_login, redirect_based_on_role, register, process_register BIARKAN SAMA) ...
+    // Copy paste kode lama atau biarkan yang lama, lalu tambahkan fungsi di bawah ini:
+
+    public function index() {
         if ($this->session->userdata('logged_in')) {
             $this->redirect_based_on_role();
         } else {
@@ -23,106 +22,106 @@ class Auth extends CI_Controller {
         }
     }
 
-    // 2. Proses Login
-    public function process_login()
-    {
+    public function process_login() {
+        // ... (Isi sesuai kode sebelumnya) ...
         $email = $this->input->post('email');
         $password = $this->input->post('password');
-
-        // Cek user di database lewat Model
         $user = $this->User_model->cek_login($email);
-
         if ($user) {
-            // Verifikasi Password (Hash)
             if (password_verify($password, $user->password)) {
-                
-                // Jika password benar, simpan data user ke SESSION
-                $session_data = [
-                    'user_id'   => $user->id,
-                    'name'      => $user->name,
-                    'email'     => $user->email,
-                    'role'      => $user->role, // Penting untuk pemisahan hak akses
-                    'logged_in' => TRUE
-                ];
+                $session_data = [ 'user_id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => $user->role, 'logged_in' => TRUE ];
                 $this->session->set_userdata($session_data);
-                
-                // Arahkan ke halaman yang sesuai
                 $this->redirect_based_on_role();
-
             } else {
-                // Password salah
                 $this->session->set_flashdata('error', 'Password salah!');
                 redirect('auth');
             }
         } else {
-            // Email tidak ditemukan
             $this->session->set_flashdata('error', 'Email tidak terdaftar!');
             redirect('auth');
         }
     }
 
-    // 3. Fungsi Pengarah Role (Traffic Controller)
-    private function redirect_based_on_role()
-    {
+    private function redirect_based_on_role() {
         $role = $this->session->userdata('role');
-
-        if ($role === 'admin') {
-            redirect('dashboard'); // Admin masuk ke Dashboard utama
-        } 
-        elseif ($role === 'cashier') {
-            // Cashier/Kitchen sementara diarahkan ke dashboard juga (agar tidak 404)
-            // Nanti Anda bisa ubah ke redirect('kitchen') jika controller Kitchen sudah dibuat
-            redirect('dashboard'); 
-        } 
-        elseif ($role === 'guest') {
-            // Guest sementara diarahkan ke dashboard juga (agar tidak 404)
-            // Nanti Anda bisa ubah ke redirect('menu') jika controller Menu sudah dibuat
-            redirect('dashboard'); 
-        } 
-        else {
-            // Jika role tidak dikenali, logout paksa
+        if ($role === 'admin' || $role === 'cashier' || $role === 'guest') {
+            redirect('dashboard');
+        } else {
             redirect('auth/logout');
         }
     }
 
-    // 4. Halaman Register (Khusus Guest)
-    public function register()
-    {
+    public function register() {
         $this->load->view('register_view');
     }
 
-    // 5. Proses Register
-    public function process_register()
-    {
-        $name     = $this->input->post('name');
-        $email    = $this->input->post('email');
+    public function process_register() {
+        // ... (Isi sesuai kode sebelumnya) ...
+        $name = $this->input->post('name');
+        $email = $this->input->post('email');
         $password = $this->input->post('password');
-
-        // Enkripsi Password (Hash)
         $encrypted_password = password_hash($password, PASSWORD_BCRYPT);
-
-        // Siapkan data untuk disimpan
-        $data = [
-            'name'     => $name,
-            'email'    => $email,
-            'password' => $encrypted_password,
-            'role'     => 'guest' // Default register selalu jadi Guest
-        ];
-
-        // Simpan ke database via Model
+        $data = [ 'name' => $name, 'email' => $email, 'password' => $encrypted_password, 'role' => 'guest' ];
         if ($this->User_model->register($data)) {
-            $this->session->set_flashdata('success', 'Registrasi berhasil! Silakan login.');
+            $this->session->set_flashdata('success', 'Akun berhasil dibuat! Silakan login.');
             redirect('auth');
         } else {
-            $this->session->set_flashdata('error', 'Gagal mendaftar. Silakan coba lagi.');
+            $this->session->set_flashdata('error', 'Gagal mendaftar.');
             redirect('auth/register');
         }
     }
 
-    // 6. Logout
-    public function logout()
-    {
+    public function logout() {
         $this->session->sess_destroy();
         redirect('auth');
+    }
+
+    // =========================================================
+    // [BARU] FITUR LUPA PASSWORD
+    // =========================================================
+
+    // 1. Halaman Masukkan Email
+    public function forgot_password()
+    {
+        $this->load->view('forgot_password_view');
+    }
+
+    // 2. Cek Email & Arahkan ke Form Reset
+    public function verify_reset()
+    {
+        $email = $this->input->post('email');
+        
+        // Cek apakah email ada di database
+        $user = $this->User_model->cek_login($email);
+
+        if ($user) {
+            // Jika ada, tampilkan halaman ganti password
+            // Kita kirim email ke view agar bisa dipakai untuk update
+            $data['email_found'] = $email;
+            $this->load->view('reset_password_view', $data);
+        } else {
+            // Jika tidak ada, kembali ke halaman lupa password
+            $this->session->set_flashdata('error', 'Email tidak ditemukan dalam sistem.');
+            redirect('auth/forgot_password');
+        }
+    }
+
+    // 3. Proses Simpan Password Baru
+    public function process_reset_password()
+    {
+        $email = $this->input->post('email');
+        $password = $this->input->post('password');
+
+        // Enkripsi password baru
+        $new_hash = password_hash($password, PASSWORD_BCRYPT);
+
+        // Update di database
+        if ($this->User_model->update_password($email, $new_hash)) {
+            $this->session->set_flashdata('success', 'Password berhasil diubah! Silakan login dengan password baru.');
+            redirect('auth');
+        } else {
+            $this->session->set_flashdata('error', 'Gagal mengubah password.');
+            redirect('auth/forgot_password');
+        }
     }
 }
